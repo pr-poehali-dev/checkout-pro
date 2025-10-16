@@ -7,13 +7,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 
+type SavedCard = {
+  id: string;
+  last4: string;
+  brand: string;
+  expiry: string;
+};
+
 export default function Index() {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal'>('card');
   const [agreed, setAgreed] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<string | 'new'>('new');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cvv, setCvv] = useState('');
   const { toast } = useToast();
+
+  const savedCards: SavedCard[] = [
+    { id: '1', last4: '4242', brand: 'Visa', expiry: '12/25' },
+    { id: '2', last4: '5555', brand: 'Mastercard', expiry: '03/26' },
+  ];
 
   const formatCardNumber = (value: string) => {
     const cleaned = value.replace(/\s/g, '');
@@ -54,13 +67,23 @@ export default function Index() {
       return;
     }
 
-    if (paymentMethod === 'card' && (!cardNumber || !expiryDate || !cvv)) {
-      toast({
-        title: "Заполните все поля",
-        description: "Введите данные карты для продолжения",
-        variant: "destructive",
-      });
-      return;
+    if (paymentMethod === 'card') {
+      if (selectedCard === 'new' && (!cardNumber || !expiryDate || !cvv)) {
+        toast({
+          title: "Заполните все поля",
+          description: "Введите данные карты для продолжения",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (selectedCard !== 'new' && !cvv) {
+        toast({
+          title: "Введите CVV",
+          description: "Для безопасности введите CVV код",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     toast({
@@ -124,42 +147,128 @@ export default function Index() {
               </div>
 
               {paymentMethod === 'card' && (
-                <form onSubmit={handleSubmit} className="space-y-4 animate-fade-in">
-                  <div className="space-y-2">
-                    <Label htmlFor="cardNumber" className="text-sm font-medium">
-                      Номер карты
-                    </Label>
-                    <Input
-                      id="cardNumber"
-                      placeholder="1234 5678 9012 3456"
-                      value={cardNumber}
-                      onChange={handleCardNumberChange}
-                      className="h-12 text-base"
-                      maxLength={19}
-                    />
+                <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Выберите карту</Label>
+                    <div className="space-y-2">
+                      {savedCards.map((card) => (
+                        <button
+                          key={card.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCard(card.id);
+                            setCvv('');
+                          }}
+                          className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                            selectedCard === card.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded flex items-center justify-center ${
+                              selectedCard === card.id ? 'bg-primary/10' : 'bg-secondary'
+                            }`}>
+                              <Icon name="CreditCard" size={20} className={selectedCard === card.id ? 'text-primary' : ''} />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">{card.brand} •••• {card.last4}</div>
+                              <div className="text-sm text-muted-foreground">Истекает {card.expiry}</div>
+                            </div>
+                          </div>
+                          {selectedCard === card.id && (
+                            <Icon name="CheckCircle2" size={20} className="text-primary" />
+                          )}
+                        </button>
+                      ))}
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCard('new');
+                          setCardNumber('');
+                          setExpiryDate('');
+                          setCvv('');
+                        }}
+                        className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                          selectedCard === 'new'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-muted-foreground/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded flex items-center justify-center ${
+                            selectedCard === 'new' ? 'bg-primary/10' : 'bg-secondary'
+                          }`}>
+                            <Icon name="Plus" size={20} className={selectedCard === 'new' ? 'text-primary' : ''} />
+                          </div>
+                          <div className="text-left">
+                            <div className="font-medium">Добавить новую карту</div>
+                          </div>
+                        </div>
+                        {selectedCard === 'new' && (
+                          <Icon name="CheckCircle2" size={20} className="text-primary" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="expiry" className="text-sm font-medium">
-                        Срок действия
-                      </Label>
-                      <Input
-                        id="expiry"
-                        placeholder="ММ/ГГ"
-                        value={expiryDate}
-                        onChange={handleExpiryChange}
-                        className="h-12 text-base"
-                        maxLength={5}
-                      />
-                    </div>
+                  {selectedCard === 'new' && (
+                    <div className="space-y-4 animate-fade-in">
+                      <div className="space-y-2">
+                        <Label htmlFor="cardNumber" className="text-sm font-medium">
+                          Номер карты
+                        </Label>
+                        <Input
+                          id="cardNumber"
+                          placeholder="1234 5678 9012 3456"
+                          value={cardNumber}
+                          onChange={handleCardNumberChange}
+                          className="h-12 text-base"
+                          maxLength={19}
+                        />
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="cvv" className="text-sm font-medium">
-                        CVV
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="expiry" className="text-sm font-medium">
+                            Срок действия
+                          </Label>
+                          <Input
+                            id="expiry"
+                            placeholder="ММ/ГГ"
+                            value={expiryDate}
+                            onChange={handleExpiryChange}
+                            className="h-12 text-base"
+                            maxLength={5}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="cvv" className="text-sm font-medium">
+                            CVV
+                          </Label>
+                          <Input
+                            id="cvv"
+                            placeholder="123"
+                            type="password"
+                            value={cvv}
+                            onChange={handleCvvChange}
+                            className="h-12 text-base"
+                            maxLength={3}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedCard !== 'new' && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label htmlFor="cvv-saved" className="text-sm font-medium">
+                        CVV код
                       </Label>
                       <Input
-                        id="cvv"
+                        id="cvv-saved"
                         placeholder="123"
                         type="password"
                         value={cvv}
@@ -168,7 +277,7 @@ export default function Index() {
                         maxLength={3}
                       />
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex items-start gap-3 pt-2">
                     <Checkbox
